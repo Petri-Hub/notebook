@@ -1,0 +1,79 @@
+---
+globs:
+  - '**/domain/events/*.event.ts'
+---
+
+# Domain Event
+
+## Purpose
+Domain events are immutable records of facts that already happened inside the
+domain. They decouple the module that produced the state change from every
+module that reacts to it — neither side knows about the other (Clean
+Architecture's Dependency Rule). Events are named in **past tense** because
+they describe what occurred, not what should happen. The payload must be a
+**value snapshot** — a copy of the data at the moment of the event — never a
+live reference to a mutable entity. Every event extends `BaseEvent<T>`, which
+auto-generates `id`, `version`, and `timestamp`. Emission always goes through
+the `EventEmiiter` domain abstraction; NestJS event primitives must never
+appear in this layer.
+
+> **Related rules:**
+> - @core/shared.mdc — where event types must be registered
+> - @use-case.mdc — when and how use cases emit events after persistence
+> - @event-handler.mdc — how events are consumed in the presentation layer
+> - @layer-dependencies.mdc — domain events must not import infrastructure
+
+---
+
+## Non-Negotiables
+
+- Always extend `BaseEvent<T>` — never use a plain class or `EventEmitter2`
+- Always declare a local `XxxEventProps` type that shapes the payload
+- Always bind to `EventTypes` enum — never pass raw event name strings
+- Name event classes in past tense (`TruckCreatedEvent`, not `CreateTruckEvent`)
+- Payload must be a value snapshot — never pass a domain entity reference directly
+- Register new event types in `shared/domain/constants/events.constants.ts` before creating the event class — never create a module-local constants file
+
+---
+
+## Patterns
+
+### ✅ Correct
+
+```typescript
+import { BaseEvent } from '../../../shared/domain/entities/base.event';
+import { EventTypes } from '../../../shared/domain/constants/events.constants';
+
+type TruckCreatedEventProps = {
+  id: number;
+  licensePlate: string;
+  brand: string;
+  model: string;
+  year: number;
+  createdAt: Date;
+  updatedAt: Date;
+};
+
+export class TruckCreatedEvent extends BaseEvent<TruckCreatedEventProps> {
+  constructor(payload: TruckCreatedEventProps) {
+    super({ type: EventTypes.TRUCK_CREATED, payload });
+  }
+}
+```
+
+### ❌ Wrong
+
+```typescript
+import { EventEmitter2 } from '@nestjs/event-emitter'; // infrastructure in domain
+
+export class CreateTruckEvent {            // imperative name — events are past tense
+  constructor(public truck: Truck) {}     // live entity reference, not a snapshot
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/shared/domain/entities/base.event.ts — BaseEvent contract
+- @projects/apps/truck-backend/src/app/modules/shared/domain/constants/events.constants.ts — EventTypes enum
+- @use-case.mdc — emission pattern after successful persistence

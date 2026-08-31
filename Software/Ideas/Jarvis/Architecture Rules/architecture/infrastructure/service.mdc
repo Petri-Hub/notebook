@@ -1,0 +1,66 @@
+---
+globs:
+  - '**/infrastructure/services/*.service.ts'
+---
+
+# Infrastructure Service
+
+## Purpose
+Infrastructure services are adapters that fulfil domain service contracts using
+framework or library primitives (NestJS EventEmitter, mailer, etc.). They are
+the only place where those primitives may be imported. The domain abstract class
+declares what the application needs; this class delivers it. The implementation
+must be deliberately thin — no business logic, no branching, no transformation
+beyond what the primitive requires. If logic is needed, it belongs in a use case
+or the domain, not here.
+
+> **Related rules:**
+> - @domain/entity.mdc — domain abstractions that these services implement
+> - @module.mdc — how the abstract token is bound to this concrete class
+
+---
+
+## Non-Negotiables
+
+- Always `implements` the domain abstract service class — never re-declare the signature
+- Always decorate with `@Injectable()`
+- Name the class after the library it wraps: `Nestjs<Name>Service`, `Aws<Name>Service`, etc.
+- Never add business logic — delegate directly to the injected framework primitive
+- Never import domain repositories or use cases — services adapt a single external capability
+
+---
+
+## Patterns
+
+### ✅ Correct
+
+```typescript
+@Injectable()
+export class NestEventEmitterService implements EventEmiiter {
+  constructor(private readonly eventEmitter: EventEmitter2) {}
+
+  async emit(event: BaseEvent<unknown>): Promise<void> {
+    await this.eventEmitter.emitAsync(event.type, event);
+  }
+}
+```
+
+### ❌ Wrong
+
+```typescript
+@Injectable()
+export class NestEventEmitterService { // missing implements — contract not enforced
+  async emit(event: BaseEvent<unknown>): Promise<void> {
+    if (event.type === 'truck.created') { // business logic does not belong here
+      console.log('Truck created!');
+    }
+    this.eventEmitter.emit(event.type, event);
+  }
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/shared/infrastructure/services/nest-event-emitter.service.ts — event emitter adapter example
+- @projects/apps/truck-backend/src/app/modules/mail/infrastructure/services/nestjs-mailer.service.ts — mailer adapter example

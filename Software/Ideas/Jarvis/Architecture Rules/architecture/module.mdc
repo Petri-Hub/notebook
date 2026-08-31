@@ -1,0 +1,85 @@
+---
+globs:
+  - '**/*.module.ts'
+---
+
+# NestJS Module
+
+## Purpose
+Modules are the DI wiring layer. They assemble a feature by binding abstract
+domain tokens to their concrete infrastructure implementations and registering
+all use cases, controllers, mappers, and handlers. A feature module owns
+everything inside its folder boundary. Global modules (`@Global()`) expose
+shared infrastructure to the entire application without requiring explicit
+imports — they are declared once in `AppModule` and never imported elsewhere.
+
+> **Related rules:**
+> - @domain/repository.mdc — abstract class used as the DI token
+> - @infrastructure/repository.mdc — concrete class bound to the token
+> - @core/architecture.mdc — what each layer is allowed to import
+
+---
+
+## Non-Negotiables
+
+- Abstract domain classes are always bound with `{ provide: AbstractClass, useClass: ConcreteClass }`
+- Use cases, mappers, and handlers are registered directly as shorthand providers
+- Only `@Global()` modules export their providers — feature modules never export
+- `@Global()` modules are imported only in `AppModule` — never in feature modules
+- `AppModule` registers global exception filters via `{ provide: APP_FILTER, useClass: XxxFilter }`
+- Never add business logic to a module — it is wiring only
+
+---
+
+## Patterns
+
+### ✅ Correct — feature module
+
+```typescript
+@Module({
+  imports: [PrismaModule],
+  controllers: [TruckController],
+  providers: [
+    {
+      provide: TruckRepository,
+      useClass: PrismaTruckRepository
+    },
+    CreateTruckUseCase,
+    FindAllTrucksUseCase,
+    UpdateTruckUseCase,
+    DeleteTruckUseCase,
+    TruckControllerMapper,
+  ],
+})
+export class TrucksModule {}
+```
+
+### ✅ Correct — global module
+
+```typescript
+@Global()
+@Module({
+  providers: [{ provide: Mailer, useClass: NestjsMailerService }],
+  exports: [Mailer],
+})
+export class MailModule {}
+```
+
+### ❌ Wrong
+
+```typescript
+@Module({
+  providers: [
+    PrismaTruckRepository,           // concrete class exposed directly — use abstract token
+  ],
+  exports: [PrismaTruckRepository],  // feature modules never export
+})
+export class TrucksModule {}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/trucks/trucks.module.ts — feature module example
+- @projects/apps/truck-backend/src/app/modules/mail/mail.module.ts — global module example
+- @projects/apps/truck-backend/src/app/app.module.ts — AppModule wiring and filter registration

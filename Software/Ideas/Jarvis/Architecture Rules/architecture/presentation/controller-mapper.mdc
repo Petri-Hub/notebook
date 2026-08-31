@@ -1,0 +1,85 @@
+---
+globs:
+  - '**/presentation/rest/*.controller.mapper.ts'
+---
+
+# Controller Mapper
+
+## Purpose
+The controller mapper handles all translation between the HTTP layer and the
+application layer. It works in both directions: inbound (request DTO → use
+case Command) and outbound (domain entity/Result → response DTO). When the
+DTO type satisfies the Command type directly, the controller may pass the DTO
+through without involving the mapper. The mapper is needed when the shapes
+diverge — for example, combining a path parameter with a body DTO into a
+single Command, or projecting a domain entity into a flattened response shape.
+The mapper owns structural translation only — no business logic, no async
+calls, no domain decisions.
+
+> **Related rules:**
+> - @controller.mdc — the mapper is always injected and called from the controller
+> - @controller-dto.mdc — the DTO shapes this mapper consumes and produces
+> - @use-case.mdc — the Command/Result shapes this mapper maps to and from
+
+---
+
+## Non-Negotiables
+
+- Always decorate with `@Injectable()`
+- Name the class `<Resource>ControllerMapper`
+- Always provide a list variant (`toResponseDTOList`) alongside the single variant
+- Never add business logic or domain decisions — structural translation only
+- Never call repositories, use cases, or any async operation
+- Use `toCommand` for inbound mapping (DTO → Command), `toResponseDTO` for outbound
+
+---
+
+## Patterns
+
+### ✅ Correct — outbound (domain entity → response DTO)
+
+```typescript
+@Injectable()
+export class TruckControllerMapper {
+  toResponseDTO(truck: Truck): TruckResponseDTO {
+    return {
+      licensePlate: truck.licensePlate,
+      brand: truck.brand,
+      model: truck.model,
+      year: truck.year,
+    };
+  }
+
+  toResponseDTOList(trucks: Truck[]): TruckResponseDTO[] {
+    return trucks.map((truck) => this.toResponseDTO(truck));
+  }
+}
+```
+
+### ✅ Correct — inbound (DTO + param → Command)
+
+```typescript
+toUpdateCommand(id: number, dto: UpdateTruckDTO): UpdateTruckCommand {
+  return { id, ...dto };
+}
+```
+
+### ❌ Wrong
+
+```typescript
+export class TruckControllerMapper {  // missing @Injectable()
+  toResponseDTO(truck: Truck): TruckResponseDTO {
+    if (truck.year < 1980) {          // business logic — belongs in entity or use case
+      return { ...truck, label: 'vintage' };
+    }
+    return truck;                     // returning entity directly — bypasses DTO shape
+  }
+}
+```
+
+---
+
+## References
+- @projects/apps/jarvis-api/src/app/modules/trucks/presentation/rest/truck.controller.mapper.ts — canonical example
+- @controller-dto.mdc — the DTO types consumed and produced here
+- @use-case.mdc — the Command types produced by inbound mapping

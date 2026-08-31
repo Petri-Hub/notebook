@@ -1,0 +1,82 @@
+---
+globs:
+  - '**/domain/repositories/*.repository.ts'
+---
+
+# Domain Repository
+
+## Purpose
+Domain repositories are **ports** in the Ports & Adapters sense. The domain
+declares what data access it needs; the infrastructure delivers it. This
+inverts the dependency: the domain does not know whether data comes from
+Postgres, an in-memory store, or a remote API. Repositories are declared as
+`abstract class` — not `interface` — because TypeScript interfaces are erased
+at runtime and cannot serve as NestJS DI tokens. Only declare methods that at
+least one use case actually calls (Interface Segregation). Input data shapes
+(`CreateXData`, `UpdateXData`) are co-located in this file because they are
+part of the contract, not the implementation.
+
+> **Related rules:**
+> - @infrastructure/repository.mdc — how to implement this contract with Prisma
+> - @module.mdc — how to bind the abstract token to the concrete class
+> - @layer-dependencies.mdc — why the domain layer must not import infrastructure
+
+---
+
+## Non-Negotiables
+
+- Always use `abstract class`, never `interface`
+- Never import from `@nestjs/*`, `@prisma/*`, or any infrastructure library
+- Always co-locate `CreateXData` and `UpdateXData` types in the same file
+- All methods must be `abstract` and return domain entities, never Prisma models
+- Nullable lookups must return `Entity | null`, never `Entity | undefined`
+- Never declare a method that no use case calls — apply Interface Segregation
+
+---
+
+## Patterns
+
+### ✅ Correct
+
+```typescript
+import { Truck } from '../entities/truck.entity';
+
+export abstract class TruckRepository {
+  abstract create(data: CreateTruckData): Promise<Truck>;
+  abstract findAll(): Promise<Truck[]>;
+  abstract findById(id: number): Promise<Truck | null>;
+  abstract findByLicensePlate(licensePlate: string): Promise<Truck | null>;
+  abstract update(id: number, data: UpdateTruckData): Promise<Truck>;
+  abstract delete(id: number): Promise<void>;
+}
+
+export type CreateTruckData = {
+  licensePlate: string;
+  brand: string;
+  model: string;
+  year: number;
+};
+
+export type UpdateTruckData = {
+  licensePlate?: string;
+  brand?: string;
+  model?: string;
+  year?: number;
+};
+```
+
+### ❌ Wrong
+
+```typescript
+import { PrismaClient } from '@prisma/client'; // infrastructure leaking into domain
+
+export interface TruckRepository {             // interface is not a valid DI token
+  findById(id: number): Promise<Truck | undefined>; // use null, not undefined
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/trucks/domain/repositories/truck.repository.ts — canonical example
+- @infrastructure/repository.mdc — the Prisma implementation of this contract

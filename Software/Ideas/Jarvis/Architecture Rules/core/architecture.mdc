@@ -1,0 +1,87 @@
+---
+match: any
+---
+# Architecture
+
+## Layer Dependencies
+
+This project enforces Clean Architecture's Dependency Rule: source code
+dependencies point inward only. The domain is the innermost layer and knows
+nothing about the layers around it. Each outer layer may import from the layers
+inside it, never the reverse. Violating these boundaries breaks the isolation
+that makes each layer independently testable and replaceable.
+
+## Allowed Imports Per Layer
+
+### `domain/`
+- Other files within `domain/` only
+- Zero external library imports (`@nestjs/*`, `@prisma/*`, etc.)
+- Exception: Node.js built-ins (`crypto`, etc.) are permitted
+
+### `application/`
+- `domain/` — entities, repositories (abstract), errors, events, services (abstract)
+- `@nestjs/common` for `@Injectable()` only
+- Never imports from `infrastructure/` or `presentation/`
+
+### `infrastructure/`
+- `domain/` — the abstract contracts it implements
+- Framework and library packages (`@nestjs/*`, `@prisma/*`, etc.)
+- Never imports from `application/` or `presentation/`
+
+### `presentation/`
+- `application/` — use cases and use case types
+- `domain/` — entities (for mapper input types), errors (for filter typing)
+- `@nestjs/common`, `@nestjs/swagger`, `class-validator`, `class-transformer`
+- Never imports from `infrastructure/`
+
+## Module Folder Structure
+
+Every feature module under `src/app/modules/<name>/` follows this layout:
+
+```
+<module-name>/
+├── domain/
+│   ├── constants/       *.constants.ts
+│   ├── entities/        *.entity.ts
+│   ├── errors/          *.error.ts
+│   ├── events/          *.event.ts
+│   ├── repositories/    *.repository.ts     (abstract class + data types)
+│   └── services/        *.service.ts        (abstract class)
+├── application/
+│   └── use-cases/
+│       └── <verb>-<noun>/
+│           ├── *.usecase.ts
+│           └── *.types.ts
+├── infrastructure/
+│   ├── repositories/    prisma-*.repository.ts
+│   └── services/        nestjs-*.service.ts
+└── presentation/
+    ├── rest/
+    │   ├── *.controller.ts
+    │   ├── *.controller.dto.ts
+    │   └── *.controller.mapper.ts
+    └── handlers/        *.handler.ts
+```
+
+## Violation Examples
+
+```typescript
+// ❌ domain importing infrastructure
+import { PrismaClient } from '@prisma/client'; // in domain/repositories/
+
+// ❌ application importing presentation
+import { CreateTruckDTO } from '../../presentation/rest/truck.controller.dto'; // in use case
+
+// ❌ application importing infrastructure
+import { PrismaTruckRepository } from '../../infrastructure/repositories/prisma-truck.repository'; // in use case
+
+// ❌ presentation importing infrastructure
+import { PrismaRepository } from '../../prisma/infrastructure/prisma.repository'; // in controller
+```
+
+---
+
+## References
+- @core/project-overview.mdc — folder structure and module layout
+- @domain/repository.mdc — why abstract class instead of interface
+- @architecture/module.mdc — where abstract-to-concrete bindings live

@@ -1,0 +1,103 @@
+---
+match: any
+---
+# Pagination
+
+## Purpose
+Pagination, filtering, and sorting are implemented as a consistent cross-cutting
+pattern. The shared module owns the generic contracts (`Page<T>`,
+`OffsetPaginatedCommand`, `PaginationDTO`). Each feature module owns only its
+specific filter and sort shapes. The full flow is: controller query params →
+mapper assembles command → use case delegates to repository → repository returns
+`Page<Entity>` → mapper projects to list response DTO.
+
+> **Related rules:**
+> - @core/shared.mdc — shared contracts that must not be re-declared per feature
+> - @domain/entity.mdc — filters and sort are also domain entities
+> - @use-case-types.mdc — how search commands are typed
+
+---
+
+## Non-Negotiables
+
+- Always use `Page<T>` from `shared/domain/entities/page.entity.ts` — never declare a custom paginated wrapper
+- Always use `OffsetPaginatedCommand` or `CursorPaginatedCommand` from `shared/application/usecases/paginated.command.ts` as the base for search commands — never inline `page` and `size` fields
+- Always declare `<Resource>Filters` and `<Resource>Sort` as `type` aliases in the feature's `domain/entities/` folder
+- Always use `Partial<{...}>` for filters and sort — every field is optional
+- Always use `PaginationDTO` from shared for the pagination section of list response DTOs
+- Default page is `0`, default size is `20` — always set via `DefaultValuePipe` in the controller
+
+---
+
+## Patterns
+
+### Domain entities (feature-owned)
+
+```typescript
+// <resource>-filters.entity.ts
+export type TruckFilters = Partial<{
+  search: string;
+}>;
+
+// <resource>-sort.entity.ts
+export type TruckSortField = 'licensePlate' | 'brand' | 'model' | 'year' | 'createdAt';
+export type TruckSortOrder = 'asc' | 'desc';
+
+export type TruckSort = Partial<{
+  field: TruckSortField;
+  order: TruckSortOrder;
+}>;
+```
+
+### Use case types
+
+```typescript
+// search-<resource>.types.ts
+import { OffsetPaginatedCommand } from '../../../../shared/application/usecases/paginated.command';
+
+export type SearchTrucksCommand = OffsetPaginatedCommand & {
+  filters: TruckFilters;
+  sort: TruckSort;
+};
+
+export type SearchTrucksResult = {
+  page: Page<Truck>;
+};
+```
+
+### List response DTO (presentation)
+
+```typescript
+export class TruckListResponseDTO {
+  @ApiProperty({ type: [TruckResponseDTO] })
+  trucks: TruckResponseDTO[];
+
+  @ApiProperty({ type: PaginationDTO })
+  pagination: PaginationDTO;
+}
+```
+
+### Controller — query params
+
+```typescript
+@Get()
+async search(
+  @Query('page', new DefaultValuePipe(0), ParseIntPipe) page: number,
+  @Query('size', new DefaultValuePipe(20), ParseIntPipe) size: number,
+  @Query('search') search?: string,
+  @Query('sort-by') sortField?: TruckSortField,
+  @Query('sort-order') sortOrder?: TruckSortOrder,
+): Promise<TruckListResponseDTO> {
+  const command = this.mapper.toSearchCommand(page, size, search, sortField, sortOrder);
+  const result = await this.searchTrucksUseCase.execute(command);
+  return this.mapper.toListResponseDTO(result);
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/shared/domain/entities/page.entity.ts — Page<T> shape
+- @projects/apps/truck-backend/src/app/modules/shared/application/usecases/paginated.command.ts — base command types
+- @projects/apps/truck-backend/src/app/modules/shared/presentation/rest/dtos/pagination.dto.ts — PaginationDTO
+- @projects/apps/truck-backend/src/app/modules/trucks/application/use-cases/search-trucks/search-trucks.types.ts — feature search command example

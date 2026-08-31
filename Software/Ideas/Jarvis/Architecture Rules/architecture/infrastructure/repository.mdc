@@ -1,0 +1,98 @@
+---
+globs:
+  - '**/infrastructure/repositories/*.repository.ts'
+---
+
+# Infrastructure Repository
+
+## Purpose
+Infrastructure repositories are the adapters that fulfil the domain repository
+contract using Prisma. They are the only place in the codebase allowed to
+import Prisma types. Their responsibility is to translate between the
+persistence model and the domain model — nothing must cross this boundary in
+either direction. Every Prisma result is mapped to a domain entity before
+returning. Every Prisma error is caught and re-thrown as a domain persistence
+error, preserving the original `cause`. Upper layers never see a Prisma type
+or a raw database exception.
+
+> **Related rules:**
+> - @domain/repository.mdc — the abstract contract this class implements
+> - @domain/entity.mdc — the return type of every method here
+> - @domain/error.mdc — the persistence error wrapping pattern
+> - @module.mdc — how this class is bound to the abstract token
+
+---
+
+## Non-Negotiables
+
+- Always `implements` the domain abstract repository class — never re-declare method signatures
+- Always decorate with `@Injectable()`
+- Name the class `Prisma<Entity>Repository`
+- Always wrap every method body in try/catch — throw a domain persistence error with `cause`
+- Always map Prisma results to domain entities via a private `mapToDomain()` method
+- Never return a Prisma model type — `mapToDomain` is the only exit point for persistence data
+- Return `null` for not-found queries — never `undefined`
+
+---
+
+## Patterns
+
+### ✅ Correct
+
+```typescript
+@Injectable()
+export class PrismaTruckRepository implements TruckRepository {
+  constructor(private readonly prisma: PrismaRepository) {}
+
+  async findById(id: number): Promise<Truck | null> {
+    try {
+      const record = await this.prisma.truck.findUnique({
+        where: { id },
+        select: {
+          id: true,
+          licensePlate: true,
+          brand: true,
+          model: true,
+          year: true,
+          createdAt: true,
+          updatedAt: true,
+        },
+      });
+
+      return record ? this.mapToDomain(record) : null;
+    } catch (error) {
+      throw new TruckPersistenceError({ cause: error });
+    }
+  }
+
+  private mapToDomain(record: {
+    id: number; licensePlate: string; brand: string;
+    model: string; year: number; createdAt: Date; updatedAt: Date;
+  }): Truck {
+    return {
+      id: record.id,
+      licensePlate: record.licensePlate,
+      brand: record.brand,
+      model: record.model,
+      year: record.year,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+    };
+  }
+}
+```
+
+### ❌ Wrong
+
+```typescript
+async findById(id: number) {       // missing return type — Prisma type leaks out
+  const truck = await this.prisma.truck.findUnique({ where: { id } });
+  return truck;                     // returning Prisma model, not a domain entity
+}                                   // no try/catch — Prisma errors escape the layer
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/trucks/infrastructure/repositories/prisma-truck.repository.ts — canonical example
+- @domain/repository.mdc — the contract being implemented

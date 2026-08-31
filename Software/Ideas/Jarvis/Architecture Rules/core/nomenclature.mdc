@@ -1,0 +1,87 @@
+---
+match: any
+---
+# Nomenclature
+
+## File Names
+All files use `kebab-case` with a mandatory semantic suffix.
+
+| Layer | Pattern | Example |
+|---|---|---|
+| Domain entity | `<noun>.entity.ts` | `truck.entity.ts` |
+| Domain repository | `<noun>.repository.ts` | `truck.repository.ts` |
+| Domain error | `<noun>-<condition>.error.ts` | `truck-not-found.error.ts` |
+| Domain event | `<noun>-<past-verb>.event.ts` | `truck-created.event.ts` |
+| Domain service | `<noun>.service.ts` | `event-emitter.service.ts` |
+| Domain constants | `<concern>.constants.ts` | `errors.constants.ts` |
+| Use case | `<verb>-<noun>.usecase.ts` | `create-truck.usecase.ts` |
+| Use case types | `<verb>-<noun>.types.ts` | `create-truck.types.ts` |
+| Infra repository | `prisma-<noun>.repository.ts` | `prisma-truck.repository.ts` |
+| Infra service | `<lib>-<noun>.service.ts` | `nestjs-mailer.service.ts` |
+| Controller | `<noun>.controller.ts` | `truck.controller.ts` |
+| Controller DTO | `<noun>.controller.dto.ts` | `truck.controller.dto.ts` |
+| Controller mapper | `<noun>.controller.mapper.ts` | `truck.controller.mapper.ts` |
+| Event handler | `<noun>-events.handler.ts` | `truck-events.handler.ts` |
+| NestJS module | `<noun>.module.ts` | `trucks.module.ts` |
+
+---
+
+## Class Names
+All classes use `PascalCase` with a matching semantic suffix.
+
+| Concept | Pattern | Example |
+|---|---|---|
+| Domain entity | `<Noun>` | `Truck` |
+| Domain repository (abstract) | `<Noun>Repository` | `TruckRepository` |
+| Infra repository | `Prisma<Noun>Repository` | `PrismaTruckRepository` |
+| Domain service (abstract) | `<Noun>Service` | `EventEmiiter` |
+| Infra service | `<Lib><Noun>Service` | `NestjsMailerService` |
+| Domain error | `<Noun><Condition>Error` | `TruckNotFoundError` |
+| Domain event | `<Noun><PastVerb>Event` | `TruckCreatedEvent` |
+| Use case | `<Verb><Noun>UseCase` | `CreateTruckUseCase` |
+| Controller | `<Noun>Controller` | `TruckController` |
+| Controller mapper | `<Noun>ControllerMapper` | `TruckControllerMapper` |
+| Event handler | `<Noun>EventsHandler` | `TruckEventsHandler` |
+| NestJS module | `<Noun>Module` | `TrucksModule` |
+
+---
+
+## Type Names
+Types use `PascalCase` with a semantic suffix.
+
+| Concept | Pattern | Example |
+|---|---|---|
+| Use case input | `<Action><Noun>Command` | `CreateTruckCommand`, `DeleteTruckCommand` |
+| Use case output | `<Action><Noun>Result` | `CreateTruckResult`, `FindTruckByIdResult` |
+| Repository data | `<Action><Noun>Data` | `CreateTruckData`, `UpdateTruckData` |
+| Request DTO | `<Action><Noun>DTO` | `CreateTruckDTO`, `DeleteTruckDTO` |
+| Response DTO | `<Noun>ResponseDTO` | `TruckResponseDTO` |
+| Error constructor props | `<Class>Props` | `TruckNotFoundErrorProps` |
+| Event payload props | `<Class>Props` | `TruckCreatedEventProps` |
+
+---
+
+## Method Names
+| Location | Method | Purpose |
+|---|---|---|
+| Use case | `execute(command)` | single public method |
+| Infra repository | `mapToDomain(record)` | Prisma → domain entity |
+| Controller mapper | `toResponseDTO(entity)` | domain entity → response DTO |
+| Controller mapper | `toResponseDTOList(entities)` | list variant |
+| Controller mapper | `to<Verb>Command(...)` | DTO → use case Command |
+| Event handler | `handle<Noun><PastVerb>(event)` | `handleTruckCreated(event)` |
+
+---
+
+## Enums & Constants
+- Enum names: `PascalCase` — `ErrorCodes`, `ErrorTitles`, `EventTypes`
+- Enum values: `UPPER_SNAKE_CASE` — `TRUCK_NOT_FOUND`, `TRUCK_CREATED`
+- Lookup tables: `UPPER_SNAKE_CASE` — `ERROR_CODE_TO_HTTP_STATUS`
+- Never use inline strings where an enum value exists
+
+---
+
+## General Rules
+- All names must be intention-revealing — never `data`, `temp`, `result`, `x`, `y`
+- Use case folder names follow `<verb>-<noun>/` — verb first, kebab-case
+- Event class names and file names use past tense — `Created`, not `Create`

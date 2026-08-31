@@ -1,0 +1,67 @@
+---
+globs:
+  - '**/presentation/handlers/*.handler.ts'
+---
+
+# Event Handler
+
+## Purpose
+Event handlers are the asynchronous equivalent of controllers — they are an
+inbound delivery mechanism, not a place for logic. A handler subscribes to a
+domain event and delegates the reaction to a use case. Structurally, it sits
+in `presentation/handlers/` for the same reason controllers sit in
+`presentation/rest/`: both are entry points into the application layer, just
+through different channels (HTTP vs event bus).
+
+> **Related rules:**
+> - @use-case.mdc — the use case this handler delegates to
+> - @domain/event.mdc — the event type being subscribed to
+
+---
+
+## Non-Negotiables
+
+- Always decorate with `@Injectable()`
+- Always use `@OnEvent(EventTypes.X)` with the enum value — never raw strings
+- Every handler method must return `Promise<void>`
+- Each `@OnEvent` method delegates to exactly one use case — never inline logic
+- Never import domain repositories or infrastructure classes directly
+- Never handle more than one resource's events in the same handler class
+
+---
+
+## Patterns
+
+### ✅ Correct
+
+```typescript
+@Injectable()
+export class TruckEventsHandler {
+  constructor(private readonly sendAdminEmailUseCase: SendAdminEmailUseCase) {}
+
+  @OnEvent(EventTypes.TRUCK_CREATED)
+  async handleTruckCreated(event: TruckCreatedEvent): Promise<void> {
+    await this.sendAdminEmailUseCase.execute({
+      subject: 'New Truck Created',
+      body: `License Plate: ${event.payload.licensePlate}`,
+    });
+  }
+}
+```
+
+### ❌ Wrong
+
+```typescript
+@OnEvent('truck.created')                       // raw string — use EventTypes enum
+async handleTruckCreated(event: TruckCreatedEvent) { // missing return type Promise<void>
+  await this.mailerService.sendMail({ ... });    // calling infrastructure directly
+  this.logger.log('Truck created');              // logic beyond delegation
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/notification/presentation/handlers/truck-events.handler.ts — canonical example
+- @domain/event.mdc — event shape and EventTypes enum
+- @use-case.mdc — the use case being delegated to

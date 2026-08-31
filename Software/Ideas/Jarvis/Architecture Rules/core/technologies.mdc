@@ -1,0 +1,42 @@
+---
+match: any
+---
+# Technologies
+
+## Runtime & Language
+- **Node.js** with **TypeScript** — strict mode, `target: es2022`, `moduleResolution: nodenext`
+- **SWC** — used for both build (`@nx/js:swc`) and test transforms (`@swc/jest`)
+
+## Framework
+- **NestJS** — `@nestjs/common`, `@nestjs/core`, `@nestjs/platform-fastify`
+- URI versioning — default version `1`, prefix from `API_GLOBAL_PREFIX` env var
+- Swagger — `@nestjs/swagger`, mounted at `/swagger`
+
+## Database
+- **PostgreSQL** via **Prisma** (`@prisma/adapter-pg`)
+- Generated client output: `src/prisma/client/`, module format `cjs`
+- `PrismaRepository` extends `PrismaClient`, implements `OnModuleInit` / `OnModuleDestroy`
+
+## Event Bus
+- **`@nestjs/event-emitter`** (wraps EventEmitter2)
+- Domain abstraction: `EventEmiiter` abstract class in `shared/domain/services/`
+- Infrastructure adapter: `NestEventEmitterService` in `shared/infrastructure/services/`
+
+## Mail
+- **`@nestjs-modules/mailer`** (SMTP)
+- Domain abstraction: `Mailer` abstract class in `mail/domain/services/`
+- Infrastructure adapter: `NestjsMailerService` in `mail/infrastructure/services/`
+- Local dev: **Mailpit** SMTP trap on port `1025`, UI on port `8025`
+
+## Validation
+- **`class-validator`** + **`class-transformer`** — applied only on controller DTOs
+- Global `ValidationPipe` with a custom `exceptionFactory` via `NestErrorFactoryService`
+
+## Monorepo
+- **NX** workspace — app at `projects/apps/truck-backend/`
+- **pnpm** with `pnpm-workspace.yaml`
+
+## Dev Infrastructure
+- **Docker Compose** (`compose.yml`) — Postgres + Mailpit
+- **Husky** — git hooks via `prepare` script
+- NX custom targets: `dependencies:up/down`, `prisma:migrate`, `prisma:generate`, etc.

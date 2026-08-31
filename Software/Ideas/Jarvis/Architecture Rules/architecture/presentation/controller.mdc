@@ -1,0 +1,81 @@
+---
+globs:
+  - '**/presentation/rest/*.controller.ts'
+---
+
+# Controller
+
+## Purpose
+Controllers are the HTTP entry point of the application. Their only
+responsibility is to receive a request, delegate to the appropriate use case,
+and return the mapped response. They contain zero business logic and zero
+domain decisions. If a controller method does anything beyond calling a use
+case and mapping its result, that logic belongs elsewhere. Every public
+endpoint must be fully documented with Swagger decorators — controllers are
+the API contract surface.
+
+> **Related rules:**
+> - @controller-dto.mdc — input/output DTO shapes and validation
+> - @controller-mapper.mdc — how domain entities become response DTOs
+> - @use-case.mdc — what the controller delegates to
+
+---
+
+## Non-Negotiables
+
+- Always decorate with `@ApiTags` and `@Controller`
+- Every method must have `@ApiOperation` with both `summary` and `description`, and at least one `@ApiResponse` per possible HTTP status
+- Always delegate to exactly one use case per method — never call two use cases in one handler
+- Always delegate response mapping to the `*ControllerMapper` — never map inline
+- Never import domain repositories, domain errors, or infrastructure classes
+- Never add conditional logic, loops, or data transformation inside a controller method
+- Always declare explicit HTTP status codes with `@HttpCode(HttpStatus.X)`when the default `200` does not apply
+
+---
+
+## Patterns
+
+### ✅ Correct
+
+```typescript
+@ApiTags('trucks')
+@Controller('trucks')
+export class TruckController {
+  constructor(
+    private readonly createTruckUseCase: CreateTruckUseCase,
+    private readonly mapper: TruckControllerMapper,
+  ) {}
+
+  @Post()
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({
+    summary: 'Create a new truck',
+    description: 'Registers a new truck in the system. The license plate must be unique.',
+  })
+  @ApiResponse({ status: HttpStatus.CREATED, type: TruckResponseDTO })
+  @ApiResponse({ status: HttpStatus.CONFLICT, type: ErrorResponseDto })
+  async create(@Body() dto: CreateTruckDTO): Promise<TruckResponseDTO> {
+    const result = await this.createTruckUseCase.execute(dto);
+    return this.mapper.toResponseDTO(result.truck);
+  }
+}
+```
+
+### ❌ Wrong
+
+```typescript
+async create(@Body() dto: CreateTruckDTO): Promise<TruckResponseDTO> {
+  const existing = await this.truckRepository.findByLicensePlate(dto.licensePlate);
+  if (existing) throw new ConflictException();        // logic belongs in use case
+
+  const result = await this.createTruckUseCase.execute(dto);
+  return { licensePlate: result.truck.licensePlate }; // mapping belongs in mapper
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/trucks/presentation/rest/truck.controller.ts — canonical example
+- @controller-dto.mdc — DTO validation and Swagger shape
+- @controller-mapper.mdc — mapping domain entities to response DTOs

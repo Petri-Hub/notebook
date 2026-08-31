@@ -1,0 +1,72 @@
+---
+match: any
+---
+# Event System
+
+## Purpose
+The event system decouples state-changing modules from the modules that react
+to those changes. The trucks module emits a fact; the notification module
+reacts to it — neither knows about the other. The entire mechanism is hidden
+behind a domain abstraction so the application layer never depends on NestJS
+event primitives directly.
+
+---
+
+## Full Flow
+
+```
+Use Case
+  └─ eventEmitter.emit(new TruckCreatedEvent({...}))
+        │  (EventEmiiter abstraction — domain layer)
+        ▼
+NestEventEmitterService
+  └─ eventEmitter.emitAsync(event.type, event)
+        │  (EventEmitter2 — infrastructure)
+        ▼
+TruckEventsHandler  @OnEvent(EventTypes.TRUCK_CREATED)
+  └─ sendAdminEmailUseCase.execute({...})
+```
+
+---
+
+## Layers and Responsibilities
+
+| Layer | File | Responsibility |
+|---|---|---|
+| Domain | `BaseEvent<T>` | Abstract base — auto-generates `id`, `version`, `timestamp` |
+| Domain | `EventEmiiter` | Abstract emission contract injected into use cases |
+| Domain | `XxxCreatedEvent` | Concrete event with typed payload snapshot |
+| Shared constants | `EventTypes` | Enum of all event type strings — single source of truth |
+| Infrastructure | `NestEventEmitterService` | Bridges `EventEmiiter` → `EventEmitter2.emitAsync` |
+| Presentation | `XxxEventsHandler` | `@OnEvent` subscriber — delegates to a use case only |
+
+---
+
+## Non-Negotiables
+
+- Use cases inject `EventEmiiter` (abstract) — never `EventEmitter2` directly
+- Always emit after a successful persistence call — never before
+- All event type strings live in `shared/domain/constants/events.constants.ts` — register there first
+- Event handlers live in `presentation/handlers/` — they are delivery mechanisms, not logic containers
+- `EventEmitterModule.forRoot()` is registered once in `AppModule` — never in feature modules
+
+---
+
+## Adding a New Event — Checklist
+
+1. Add the new type to `EventTypes` in `shared/domain/constants/events.constants.ts`
+2. Create the event class in `<feature>/domain/events/<noun>-<past-verb>.event.ts`
+3. Emit it from the relevant use case after persistence
+4. Create or extend an `*EventsHandler` in the consuming module's `presentation/handlers/`
+5. Register the handler as a provider in that module's `*.module.ts`
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/shared/domain/entities/base.event.ts — BaseEvent<T>
+- @projects/apps/truck-backend/src/app/modules/shared/domain/services/event-emitter.service.ts — EventEmiiter abstraction
+- @projects/apps/truck-backend/src/app/modules/shared/infrastructure/services/nest-event-emitter.service.ts — NestJS adapter
+- @projects/apps/truck-backend/src/app/modules/trucks/domain/events/truck-created.event.ts — concrete event example
+- @projects/apps/truck-backend/src/app/modules/notification/presentation/handlers/truck-events.handler.ts — handler example
+- @architecture/domain/event.mdc — event class conventions
+- @architecture/presentation/event-handler.mdc — handler conventions

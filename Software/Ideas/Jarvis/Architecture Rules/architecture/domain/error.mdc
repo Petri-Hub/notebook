@@ -1,0 +1,100 @@
+---
+globs:
+  - '**/domain/errors/*.error.ts'
+---
+
+# Domain Error
+
+## Purpose
+Errors are first-class domain citizens, not afterthoughts. Each error class
+communicates a specific, named failure state — callers can branch on type
+rather than parsing strings. There are two distinct categories: **business
+rule** errors represent expected domain violations (e.g. not found, already
+exists) and map to 4xx; **operation-failed** errors represent unexpected
+infrastructure failures and always carry a `cause` to preserve the original
+stack context. Both categories extend `BaseError` and bind exclusively to
+`ErrorCodes`, `ErrorTitles`, and `ErrorMessages` enums. Never use inline
+strings — every message must be traceable to a constant. The `cause` chain
+follows Clean Code's principle of providing context with exceptions: it lets
+the `DomainExceptionFilter` log the full failure chain without losing the
+root cause.
+
+> **Related rules:**
+> - @core/shared.mdc — where error codes and constants must be registered
+> - @use-case.mdc — re-throw vs wrap error strategy
+> - @layer-dependencies.mdc — errors belong to the domain layer only
+
+---
+
+## Non-Negotiables
+
+- Always extend `BaseError` — never extend `Error` directly
+- Always use `ErrorCodes`, `ErrorTitles`, `ErrorMessages` enums — never inline strings
+- Always declare a local `XxxErrorProps` type with `cause?` and `metadata?`
+- Operation-failed errors must always be constructed with `cause` — never swallow the origin
+- Business rule error constructors must default props to `= {}` (caller may omit them)
+- Register codes in `shared/domain/constants/errors.constants.ts` and `ERROR_CODE_TO_HTTP_STATUS` before creating the class — never create a module-local constants file
+
+---
+
+## Patterns
+
+### ✅ Correct — business rule error (expected violation, 4xx)
+
+```typescript
+type TruckNotFoundErrorProps = {
+  cause?: unknown;
+  metadata?: object;
+};
+
+export class TruckNotFoundError extends BaseError {
+  constructor({ cause, metadata }: TruckNotFoundErrorProps = {}) {
+    super({
+      code: ErrorCodes.TRUCK_NOT_FOUND,
+      title: ErrorTitles.TRUCK_NOT_FOUND,
+      message: ErrorMessages.TRUCK_NOT_FOUND,
+      cause,
+      metadata,
+    });
+  }
+}
+```
+
+### ✅ Correct — operation-failed error (infrastructure failure, 5xx)
+
+```typescript
+type TruckCreationFailedErrorProps = {
+  cause?: unknown;
+  metadata?: object;
+};
+
+export class TruckCreationFailedError extends BaseError {
+  constructor({ cause, metadata }: TruckCreationFailedErrorProps = {}) {
+    super({
+      code: ErrorCodes.TRUCK_CREATION_FAILED,
+      title: ErrorTitles.TRUCK_CREATION_FAILED,
+      message: ErrorMessages.TRUCK_CREATION_FAILED,
+      cause,
+      metadata,
+    });
+  }
+}
+```
+
+### ❌ Wrong
+
+```typescript
+export class TruckNotFoundError extends Error { // must extend BaseError
+  constructor() {
+    super('Truck not found'); // inline string — use ErrorMessages enum
+    // no cause preserved — root context is lost
+  }
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/shared/domain/errors/base.error.ts — BaseError contract
+- @projects/apps/truck-backend/src/app/modules/shared/domain/constants/errors.constants.ts — enums and HTTP status map
+- @use-case.mdc — re-throw vs wrap error strategy in use cases

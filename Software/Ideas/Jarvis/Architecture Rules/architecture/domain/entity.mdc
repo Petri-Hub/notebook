@@ -1,0 +1,70 @@
+---
+globs:
+  - '**/domain/entities/*.entity.ts'
+---
+
+# Domain Entity
+
+## Purpose
+Domain entities are the innermost layer of Clean Architecture — they encapsulate
+enterprise-wide business rules and are the least likely to change when external
+things (frameworks, databases, delivery mechanisms) change. An entity is a class
+that holds state and may expose methods that enforce invariants or express
+business behaviour intrinsic to that concept. They must remain importable from
+any layer without pulling in NestJS, Prisma, or any other library. An entity
+with no behaviour is an anemic domain model — acceptable only when no business
+rules exist for that concept yet.
+
+> **Related rules:**
+> - @repository.mdc — entities are the return type of every repository method
+> - @layer-dependencies.mdc — defines what the domain layer is allowed to import
+
+---
+
+## Non-Negotiables
+
+- Never import from `@nestjs/*`, `@prisma/*`, or any external library
+- Never add `class-validator`, `class-transformer`, or Swagger decorators — these belong in DTOs
+- Methods that enforce a business rule intrinsic to the entity are allowed and encouraged
+- One entity per file; file name is the entity name in `kebab-case.entity.ts`
+
+---
+
+## Patterns
+
+### ✅ Correct — entity with business rule method
+
+```typescript
+export class Truck {
+  id: number;
+  licensePlate: string;
+  brand: string;
+  model: string;
+  year: number;
+  createdAt: Date;
+  updatedAt: Date;
+
+  isVintage(): boolean {
+    return this.year < 1980;
+  }
+}
+```
+
+### ❌ Wrong
+
+```typescript
+import { ApiProperty } from '@nestjs/swagger';  // framework import in domain entity
+import { IsString } from 'class-validator';      // validation belongs in DTOs
+
+export class Truck {
+  @ApiProperty()
+  @IsString()
+  licensePlate: string;
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/trucks/domain/entities/truck.entity.ts — canonical example
+- @layer-dependencies.mdc — import boundaries for the domain layer

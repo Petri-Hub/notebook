@@ -1,0 +1,81 @@
+---
+globs:
+  - '**/presentation/rest/*.controller.dto.ts'
+---
+
+# Controller DTO
+
+## Purpose
+Controller DTOs define the shape of HTTP request bodies and responses. They
+are the validation and documentation boundary — the only place where
+`class-validator`, `class-transformer`, and `@nestjs/swagger` decorators are
+permitted. Three DTO types live together in one file per resource: the create
+input, the update input, and the response shape. Update DTOs always extend
+`PartialType(CreateDTO)` — never redeclare fields. Response DTOs carry only
+`@ApiProperty` for documentation; they have no validation decorators since
+they are never parsed from user input. DTOs must not import domain entities
+or any infrastructure types — they are a delivery-layer concept only.
+
+> **Related rules:**
+> - @controller.mdc — where DTOs are consumed as method parameters
+> - @controller-mapper.mdc — how domain entities are mapped into response DTOs
+
+---
+
+## Non-Negotiables
+
+- Every input field must have both a `class-validator` decorator and `@ApiProperty`
+- When the update shape is a partial of the create shape, extend `PartialType(CreateDTO)` — never redeclare fields that can be inherited
+- Response DTOs carry only `@ApiProperty` — no validation decorators
+- Never import domain entities, repositories, or use cases into a DTO file
+- All three DTO classes for a resource live in the same `*.controller.dto.ts` file
+
+---
+
+## Patterns
+
+### ✅ Correct
+
+```typescript
+export class CreateTruckDTO {
+  @ApiProperty({ example: 'ABC-1234' })
+  @IsString()
+  @IsNotEmpty()
+  licensePlate: string;
+
+  @ApiProperty({ example: 2020, minimum: 1900, maximum: 2100 })
+  @IsInt()
+  @Min(1900)
+  @Max(2100)
+  year: number;
+}
+
+export class UpdateTruckDTO extends PartialType(CreateTruckDTO) {}
+
+export class TruckResponseDTO {
+  @ApiProperty({ example: 'ABC-1234' })
+  licensePlate: string;
+
+  @ApiProperty({ example: 2020 })
+  year: number;
+}
+```
+
+### ❌ Wrong
+
+```typescript
+export class UpdateTruckDTO {  // shares fields with CreateTruckDTO — extend PartialType instead
+  @IsString()
+  licensePlate?: string;       // response DTOs must not have validation decorators
+}
+
+export class TruckResponseDTO {
+  truck: Truck;                // never expose domain entities directly in a response DTO
+}
+```
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/trucks/presentation/rest/truck.controller.dto.ts — canonical example
+- @controller-mapper.mdc — how domain entities are projected into response DTOs

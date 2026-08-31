@@ -1,0 +1,137 @@
+---
+globs:
+  - '**/application/use-cases/*.usecase.ts'
+---
+
+# Use Case
+
+## Purpose
+Use cases are the Application Business Rules layer of Clean Architecture. They
+orchestrate the domain to fulfil a single, named operation. They know about
+domain entities, repositories, events, and errors — nothing else. They have
+zero awareness of HTTP, databases, or any delivery mechanism. A use case does
+one thing: if the name of the class cannot be expressed as a single verb-noun
+pair, it should be split. Every use case implements `UseCase<Command, Result>`
+and is decorated with `@Injectable()` so NestJS can manage its lifetime.
+Dependencies are always domain abstractions injected via constructor —
+never instantiated directly.
+
+> **Related rules:**
+> - @domain/error.mdc — error hierarchy and two categories
+> - @domain/event.mdc — event shape and naming rules
+> - @domain/repository.mdc — the abstractions injected here
+
+---
+
+## Non-Negotiables
+
+- Always declare `Command` and `Result` types at the top of the file, before the class — use `type`, never `class` or `interface`
+- Always implement `UseCase<Command, Result>` — the `execute` method is the only public method
+- Always decorate with `@Injectable()`
+- Always name the parameter `command` in `execute`; omit it entirely when the type is `void`
+- Always inject domain abstractions (`abstract class` tokens) — never concrete classes
+- Never call another use case — compose at the module or handler level instead
+- Never import from `presentation/` or any HTTP/transport layer
+- Only inject `EventEmiiter` when the use case mutates state and emits an event
+
+---
+
+## Patterns
+
+### ✅ Correct
+
+```typescript
+import { Truck } from '../../../domain/entities/truck.entity';
+
+export type CreateTruckCommand = {
+  licensePlate: string;
+  brand: string;
+  model: string;
+  year: number;
+};
+
+export type CreateTruckResult = {
+  truck: Truck;
+};
+
+@Injectable()
+export class CreateTruckUseCase implements UseCase<CreateTruckCommand, CreateTruckResult> {
+  constructor(
+    private readonly truckRepository: TruckRepository,
+    private readonly eventEmitter: EventEmiiter,
+  ) {}
+
+  async execute(command: CreateTruckCommand): Promise<CreateTruckResult> {
+    try {
+      const existingTruck = await this.truckRepository.findByLicensePlate(command.licensePlate);
+
+      if (existingTruck) {
+        throw new TruckAlreadyExistsError({});
+      }
+
+      const truck = await this.truckRepository.create({
+        licensePlate: command.licensePlate,
+        brand: command.brand,
+        model: command.model,
+        year: command.year,
+      });
+
+      await this.eventEmitter.emit(
+        new TruckCreatedEvent({
+          id: truck.id,
+          licensePlate: truck.licensePlate,
+          brand: truck.brand,
+          model: truck.model,
+          year: truck.year,
+          createdAt: truck.createdAt,
+          updatedAt: truck.updatedAt,
+        }),
+      );
+
+      return { truck };
+    } catch (error) {
+      if (error instanceof TruckAlreadyExistsError) throw error;
+      throw new TruckCreationFailedError({ cause: error });
+    }
+  }
+}
+```
+
+---
+
+## Error Handling — the only accepted pattern
+
+```typescript
+async execute(command: XxxCommand): Promise<XxxResult> {
+  try {
+    // orchestration logic
+  } catch (error) {
+    if (error instanceof KnownDomainError) throw error; // re-throw, preserve type
+    throw new XxxOperationFailedError({ cause: error }); // wrap unknown failures
+  }
+}
+```
+
+Re-throw every domain error that callers or filters need to handle by type.
+Wrap every unknown error in an operation-failed error with `cause` — never
+swallow it and never let raw infrastructure errors escape the use case boundary.
+
+---
+
+## Event Emission — order matters
+
+```typescript
+const entity = await this.repository.create(data); // persist first
+await this.eventEmitter.emit(new EntityCreatedEvent({ ...entity })); // emit after
+return { entity };
+```
+
+Always emit after a successful persistence call. The event payload must be a
+value snapshot of the persisted state — spread individual fields, never pass
+the entity reference directly.
+
+---
+
+## References
+- @projects/apps/jarvis-api/src/app/modules/trucks/application/use-cases/create-truck.usecase.ts — mutation + event example
+- @projects/apps/jarvis-api/src/app/modules/trucks/application/use-cases/find-truck-by-id.usecase.ts — read-only example

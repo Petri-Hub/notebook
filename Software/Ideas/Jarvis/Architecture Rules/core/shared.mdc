@@ -1,0 +1,51 @@
+---
+match: any
+---
+# Shared Module
+
+## Purpose
+The `shared/` module is a `@Global()` NestJS module available everywhere without
+explicit imports. It owns the **global base contracts and constants** that all
+feature modules depend on. Feature modules never define their own error codes,
+error messages, or event types — all of these live in `shared/` as the single
+source of truth for the entire application.
+
+---
+
+## What Lives in Shared
+
+### Global Constants — always extended here, never elsewhere
+- `shared/domain/constants/errors.constants.ts` — `ErrorCodes`, `ErrorTitles`, `ErrorMessages` enums and `ERROR_CODE_TO_HTTP_STATUS` map
+- `shared/domain/constants/events.constants.ts` — `EventTypes` enum
+
+### Base Contracts — extended by all feature modules
+- `shared/domain/errors/base.error.ts` — `BaseError` abstract class
+- `shared/domain/entities/base.event.ts` — `BaseEvent<T>` abstract class
+- `shared/application/usecases/base.usecase.ts` — `UseCase<C, R>` interface
+- `shared/domain/services/event-emitter.service.ts` — `EventEmiiter` abstract class
+
+### Pagination Contracts — used by all paginated endpoints
+- `shared/domain/entities/page.entity.ts` — `Page<T>` generic paginated result wrapper
+- `shared/application/usecases/paginated.command.ts` — `OffsetPaginatedCommand`, `CursorPaginatedCommand`
+- `shared/presentation/rest/dtos/pagination.dto.ts` — `PaginationDTO` response shape
+
+### Global Infrastructure
+- `NestEventEmitterService` — concrete `EventEmiiter` implementation
+- `NestErrorFactoryService` — formats validation exceptions into `ErrorResponseDto`
+- `DomainExceptionFilter` + `GlobalExceptionFilter` — registered in `AppModule`
+
+---
+
+## Non-Negotiables
+
+- When adding a new domain error to any feature module, add its code/title/message to `shared/domain/constants/errors.constants.ts` and its HTTP mapping to `ERROR_CODE_TO_HTTP_STATUS` — never create a local constants file
+- When adding a new domain event to any feature module, add its type to `shared/domain/constants/events.constants.ts` — never create a local events constants file
+- Never re-declare `BaseError`, `BaseEvent<T>`, `UseCase`, `EventEmiiter`, `Page<T>`, or `PaginationDTO` — import from `shared/`
+- Never inline `page` and `size` fields in a search command — extend `OffsetPaginatedCommand` or `CursorPaginatedCommand`
+
+---
+
+## References
+- @projects/apps/truck-backend/src/app/modules/shared/domain/constants/errors.constants.ts — all error codes
+- @projects/apps/truck-backend/src/app/modules/shared/domain/constants/events.constants.ts — all event types
+- @projects/apps/truck-backend/src/app/modules/shared/shared.module.ts — module wiring

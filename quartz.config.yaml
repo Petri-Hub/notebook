@@ -3,6 +3,6 @@ configuration:
   baseUrl: notebook.petri.zip
   analytics: null
 
-plugins:
-  - source: "@quartz-community/footer"
-    enabled: false
+removePlugins:
+  - "@quartz-community/footer"
+  - "@quartz-community/obsidian-plugin-excalidraw"

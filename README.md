@@ -63,12 +63,9 @@ Quartz does not merge your config with its defaults — `quartz.config.yaml` **r
 `quartz.config.yaml` holds only what differs from the `obsidian` template:
 
 - `configuration` is deep merged, so `analytics: null` turns analytics off and everything unset is inherited.
-- `removePlugins` drops template entries by `source` entirely, which is how a plugin stops being configured rather than being configured off.
-- Each entry under `plugins` is matched by `source` and its keys replace the template's. Naming `options` replaces that whole block, so restate every option you want.
+- `plugins` entries are matched by `source` and their keys replace the template's. Naming `options` replaces that whole block, so restate every option you want. Patching a plugin the template does not define fails the build rather than being silently ignored.
 
-Naming a plugin the template does not define fails the build, under either key. Silence would let a plugin upstream renamed go on quietly not being removed.
-
-Two are dropped. The footer, because the template points it at Quartz's own repository and Discord, which is the wrong thing to print on every page here. Excalidraw, because Quartz references it without depending on it, so leaving it configured only logs that it cannot load on every build.
+Nothing is patched today, on purpose: the site runs the `obsidian` template as it ships. That means the footer carries Quartz's own repository and Discord links, and the build logs that it cannot load the Excalidraw plugin, which Quartz references without depending on. Both are the template's defaults rather than anything decided here.
 
 The composed config is reproducible: the template comes from the commit in `QUARTZ_REF`, so nothing changes until that pin moves.
 

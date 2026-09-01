@@ -1,8 +1,4 @@
 configuration:
-  pageTitle: Notebook
+  pageTitle: Petri Notebook
   baseUrl: notebook.petri.zip
   analytics: null
-
-removePlugins:
-  - "@quartz-community/footer"
-  - "@quartz-community/obsidian-plugin-excalidraw"

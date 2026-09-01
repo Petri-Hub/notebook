@@ -20,14 +20,6 @@ const deepMerge = (target, patch) => {
 
 base.configuration = deepMerge(base.configuration, overlay.configuration ?? {})
 
-const removed = new Set(overlay.removePlugins ?? [])
-for (const source of removed) {
-  if (!base.plugins.some((plugin) => plugin.source === source)) {
-    throw new Error(`quartz.config.yaml removes an unknown plugin: ${source}`)
-  }
-}
-base.plugins = base.plugins.filter((plugin) => !removed.has(plugin.source))
-
 for (const patch of overlay.plugins ?? []) {
   const entry = base.plugins.find((plugin) => plugin.source === patch.source)
   if (!entry) {

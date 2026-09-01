@@ -1,0 +1,76 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  QUARTZ_REF: 075afd3f712da0088a07f5284a7b3aba37dd61b6
+
+jobs:
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout notes
+        uses: actions/checkout@v6
+        with:
+          path: notes
+          fetch-depth: 0
+
+      - name: Checkout Quartz
+        uses: actions/checkout@v6
+        with:
+          repository: jackyzha0/quartz
+          ref: ${{ env.QUARTZ_REF }}
+          path: quartz
+
+      - name: Setup Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: quartz/package-lock.json
+
+      - name: Apply configuration
+        run: cp notes/quartz.config.yaml quartz/quartz.config.yaml
+
+      - name: Install dependencies
+        working-directory: quartz
+        run: npm ci
+
+      - name: Install plugins
+        working-directory: quartz
+        run: npx quartz plugin install --from-config
+
+      - name: Build
+        working-directory: quartz
+        run: npx quartz build --directory ../notes/content --output ../public
+
+      - name: Upload artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: public
+
+  deploy:
+    name: Deploy
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

@@ -47,8 +47,9 @@ Everything publishable lives under `content/`. Everything else is machinery and 
 1. Checks out this repository into `notes/` with full history — Quartz reads git for the created and modified dates shown on each page.
 2. Checks out `jackyzha0/quartz` into `quartz/` at the commit pinned in `QUARTZ_REF`.
 3. Copies `quartz.config.yaml` over the one Quartz ships with.
-4. Installs, then builds with `--directory ../notes/content`.
-5. Uploads `public/` and deploys it to Pages.
+4. Installs dependencies, then `@quartz-themes/default` — Quartz declares `@quartz-themes/core` but not the theme package it loads, and fetching it mid-build fails on a clean runner.
+5. Builds with `--directory ../notes/content`.
+6. Uploads `public/` and deploys it to Pages.
 
 The config is based on Quartz's `obsidian` template, so wikilinks, callouts, Mermaid, block references and `shortest` link resolution all work the way they do in Obsidian. `analytics` is off and the Excalidraw plugin is disabled — enable it if drawings ever land in the vault.
 

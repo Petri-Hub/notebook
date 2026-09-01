@@ -1,0 +1,2 @@
+cloudflare_api_token = "the token from My Profile, API Tokens"
+cloudflare_zone_id   = "the zone id from the Cloudflare overview page"

@@ -13,6 +13,7 @@
 - [About](#About)
 - [Structure](#Structure)
 - [How the Build Works](#HowTheBuildWorks)
+- [Configuration](#Configuration)
 - [Running Locally](#RunningLocally)
 - [Upgrading Quartz](#UpgradingQuartz)
 - [DNS](#DNS)
@@ -31,10 +32,11 @@ The vault is the product. Quartz is a build dependency, so **none of its source 
 content                   the Obsidian vault root — open this folder in Obsidian
 ├── index.md              landing page
 └── Software              one folder per subject, nested however it wants
-.github/workflows
-└── deploy.yml            checkout, build, publish
+.github
+├── workflows/deploy.yml  checkout, build, publish
+└── merge-config.mjs      overlays quartz.config.yaml on the obsidian template
 infra                     Cloudflare DNS for notebook.petri.zip
-quartz.config.yaml        the entire site configuration
+quartz.config.yaml        only what differs from the obsidian template
 ```
 
 Everything publishable lives under `content/`. Everything else is machinery and never reaches the site.
@@ -46,12 +48,24 @@ Everything publishable lives under `content/`. Everything else is machinery and 
 
 1. Checks out this repository into `notes/` with full history — Quartz reads git for the created and modified dates shown on each page.
 2. Checks out `jackyzha0/quartz` into `quartz/` at the commit pinned in `QUARTZ_REF`.
-3. Copies `quartz.config.yaml` over the one Quartz ships with.
-4. Installs dependencies, then `@quartz-themes/default` — Quartz declares `@quartz-themes/core` but not the theme package it loads, and fetching it mid-build fails on a clean runner.
+3. Installs dependencies, then `@quartz-themes/default` — Quartz declares `@quartz-themes/core` but not the theme package it loads, and fetching it mid-build fails on a clean runner.
+4. Composes the real config: `merge-config.mjs` applies `quartz.config.yaml` on top of Quartz's `obsidian` template.
 5. Builds with `--directory ../notes/content`.
 6. Uploads `public/` and deploys it to Pages.
 
-The config is based on Quartz's `obsidian` template, so wikilinks, callouts, Mermaid, block references and `shortest` link resolution all work the way they do in Obsidian. `analytics` is off and the Excalidraw plugin is disabled — enable it if drawings ever land in the vault.
+The base is Quartz's `obsidian` template, so wikilinks, callouts, Mermaid, block references and `shortest` link resolution all work the way they do in Obsidian.
+
+<br>
+<h2 id="Configuration">Configuration</h2>
+
+Quartz does not merge your config with its defaults — `quartz.config.yaml` **replaces** them outright, and one without a `plugins` list crashes the build. Committing all 300 lines here would mean carrying a verbatim copy of an upstream template and hand-reconciling it on every bump, so the config is stored as an overlay instead and composed at build time.
+
+`quartz.config.yaml` holds only what differs from the `obsidian` template:
+
+- `configuration` is deep merged, so `analytics: null` turns analytics off and everything unset is inherited.
+- Each entry under `plugins` is matched by `source` and its keys replace the template's. Naming `options` replaces that whole block, so restate every option you want. Patching a plugin the template does not define fails the build rather than being silently ignored.
+
+The composed config is reproducible: the template comes from the commit in `QUARTZ_REF`, so nothing changes until that pin moves.
 
 <br>
 <h2 id="RunningLocally">Running Locally</h2>
@@ -59,18 +73,22 @@ The config is based on Quartz's `obsidian` template, so wikilinks, callouts, Mer
 There is nothing to install in this repository. Clone Quartz somewhere else, point it here, and serve:
 
 ```sh
+NOTEBOOK=~/Desktop/Personal/Projects/notebook
 git clone https://github.com/jackyzha0/quartz.git ~/quartz
-cd ~/quartz && npm ci
-cp ~/Desktop/Personal/Projects/notebook/quartz.config.yaml .
-npx quartz build --serve --directory ~/Desktop/Personal/Projects/notebook/content
+cd ~/quartz && npm ci && npm i --no-save @quartz-themes/default
+cp $NOTEBOOK/.github/merge-config.mjs .
+node merge-config.mjs quartz/cli/templates/obsidian.yaml $NOTEBOOK/quartz.config.yaml quartz.config.yaml
+npx quartz build --serve --directory $NOTEBOOK/content
 ```
+
+Check out `QUARTZ_REF` in that clone to build exactly what CI builds. Re-run the `merge-config.mjs` line after editing the config — the dev server watches notes, not the composed config.
 
 The site is on `localhost:8080` and rebuilds as notes change.
 
 <br>
 <h2 id="UpgradingQuartz">Upgrading Quartz</h2>
 
-`QUARTZ_REF` in `deploy.yml` pins the exact commit that builds the site, so upstream cannot break a deploy on its own. To move forward, bump it to a newer commit on Quartz's `v5` branch and push. If the plugin list changed upstream, reconcile `quartz.config.yaml` against `quartz/cli/templates/obsidian.yaml` at that commit.
+`QUARTZ_REF` in `deploy.yml` pins the exact commit that builds the site, so upstream cannot break a deploy on its own. To move forward, bump it to a newer commit on Quartz's `v5` branch and push. New plugins in the template flow in on their own; a plugin that upstream renamed or dropped fails the build at the compose step, naming the entry to fix.
 
 The pin is deliberately a commit and not the `v5` branch: the branch installs plugins as npm packages, while the `v5.0.0` **tag** still resolves them as `github:` sources, which makes every CI run clone and build forty plugins.
 

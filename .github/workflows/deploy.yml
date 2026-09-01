@@ -43,12 +43,15 @@ jobs:
           cache: npm
           cache-dependency-path: quartz/package-lock.json
 
-      - name: Apply configuration
-        run: cp notes/quartz.config.yaml quartz/quartz.config.yaml
-
       - name: Install dependencies
         working-directory: quartz
         run: npm ci
+
+      - name: Compose configuration
+        working-directory: quartz
+        run: |
+          cp ../notes/.github/merge-config.mjs .
+          node merge-config.mjs quartz/cli/templates/obsidian.yaml ../notes/quartz.config.yaml quartz.config.yaml
 
       - name: Install plugins
         working-directory: quartz

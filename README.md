@@ -65,6 +65,8 @@ Quartz does not merge your config with its defaults — `quartz.config.yaml` **r
 - `configuration` is deep merged, so `analytics: null` turns analytics off and everything unset is inherited.
 - Each entry under `plugins` is matched by `source` and its keys replace the template's. Naming `options` replaces that whole block, so restate every option you want. Patching a plugin the template does not define fails the build rather than being silently ignored.
 
+The footer is off because the template points it at Quartz's own repository and Discord, which is the wrong thing to print on every page here. The Excalidraw plugin stays enabled and simply logs that it cannot load, since Quartz references it without depending on it — harmless while there are no drawings in the vault.
+
 The composed config is reproducible: the template comes from the commit in `QUARTZ_REF`, so nothing changes until that pin moves.
 
 <br>

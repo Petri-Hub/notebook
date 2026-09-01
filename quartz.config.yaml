@@ -5,10 +5,4 @@ configuration:
 
 plugins:
   - source: "@quartz-community/footer"
-    options:
-      links:
-        GitHub: https://github.com/Petri-Hub/notebook
-        petri.zip: https://petri.zip
-
-  - source: "@quartz-community/obsidian-plugin-excalidraw"
     enabled: false

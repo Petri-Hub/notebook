@@ -17,3 +17,4 @@ Nothing here is a tutorial. Notes are dense, opinionated, and rewritten whenever
 
 - [[Augusto Galego]] — 402 vídeos do canal, organizados por tema
 - [[Renato Augusto]] — 60 vídeos, organizados por tema
+- [[SQL Practice Websites]] — cursos e exercícios interativos para aprender e praticar SQL

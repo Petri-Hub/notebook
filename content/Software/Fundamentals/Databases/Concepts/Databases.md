@@ -5,7 +5,7 @@ When selecting a DB, and principally when at side of the [[ACID]]/[[BASE]] princ
 
 - Format of data types (Consistent x Dynamic)
 - Level of relationships between data (Lots x Little)
-- Availability X Consistency X Partitioning (CAP theorem)
+- Availability x Consistency under partitions ([[CAP theorem]]) and the latency/consistency trade-off ([[PACELC]])
 - Reads/Writes reason though one another (Write: NoSQL prefferend)
 
 When we talk about relational databases, most of the options are:

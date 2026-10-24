@@ -14,3 +14,5 @@ Its part of the job to architect, not only select the right pieces, but understa
 - **Scalability**: How the system is able to cope and adapt to the scale of the load.
 - **Reliability**: How reliable is the system, even when under something unpredictable.
 - **Maintainability**: How easy it is to maintain the overall system.
+
+See also: [[CAP theorem]] · [[PACELC]]

@@ -12,6 +12,7 @@ Nothing here is a tutorial. Notes are dense, opinionated, and rewritten whenever
 - [[Databases]] — concepts, kinds, and the patterns that show up across them
 - [[Designing Data-Intensive Applications]] — chapter-by-chapter notes on the book
 - [[Jarvis]] — an idea I keep circling back to, with its architecture rules
+- [[LLMs, Technical Judgment, and Reliability]] — a writing idea on AI-assisted coding and reliability
 
 ## Índices
 

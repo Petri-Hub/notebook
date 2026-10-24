@@ -19,3 +19,4 @@ Nothing here is a tutorial. Notes are dense, opinionated, and rewritten whenever
 - [[Renato Augusto]] — 60 vídeos, organizados por tema
 - [[Estratégias de Estudo]] — vídeos sobre métodos de estudo, retenção, foco e evolução técnica
 - [[SQL Practice Websites]] — cursos e exercícios interativos para aprender e praticar SQL
+- [[Roblox para desenvolvedores]] — arquitetura, ferramentas e agentes: kickstart pela documentação oficial

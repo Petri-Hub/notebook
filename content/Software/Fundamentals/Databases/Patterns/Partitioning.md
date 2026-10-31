@@ -11,6 +11,16 @@ Regarding the strategies, some of which we can do are:
 - **Sliced by range**: Define a range from 1-1000 and 1000-2000, you know separate things by a range of numbers, really simple, but requires a heavy rebalance when a new DB comes in.
 - **Sliced by HASH**: Define a hash function that transform an ID into a DB pointer, recordo 1000 goes to DB A, record 745 goes to DB B. Simple to implement, also requires re balancing.
 
+## Sharding diagrams
+
+![[Sharding.png|API routing writes to three database shards using a hash of the shard key]]
+
+Sharding is a form of horizontal partitioning. A routing function uses a shard key to select where each record is written and read. Hashing can spread records across shards, but changing the number of shards requires a migration or another routing scheme. Queries and transactions spanning shards also become more complex.
+
+![[Celebrity problem.png|One shard receives most writes for a popular account while the other shards are quiet]]
+
+The celebrity problem occurs when one key or group receives far more traffic than others. Its shard can become overloaded even if the remaining shards have spare capacity. A dedicated shard can isolate that workload, though the hot shard may still need more capacity or a different data model.
+
 Another important division about partitioning is:
 - **Physical partitioning**: Separating actual data by placing them in different physical shards, such as a another database for example.
 - **Logical partitioning**: Separating actual data by organizing them in logical partitions, which can sometimes be in the same database as before.
